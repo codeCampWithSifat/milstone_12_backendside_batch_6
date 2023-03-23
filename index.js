@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
 
@@ -19,13 +19,19 @@ const client = new MongoClient(uri, {
 
 
 function verifyJWT (req,res,next) {
-    console.log("token", req.headers.authorization);
+    // console.log("token", req.headers.authorization);
     const authHeader = req.headers.authorization;
     if(!authHeader) {
-        res.status(401).send("Unauthorized Access")
+         return res.status(401).send({message :"Unauthorized Access"})
     }
     const token = authHeader.split(" ")[1];
-    
+    jwt.verify(token, process.env.ACCESS_TOKEN, function(err,decoded) {
+        if(err) {
+            return res.status(403).send({message : "Forbidden Access"})
+        }
+        req.decoded = decoded ;
+        next()
+    })
 
 }
 
@@ -56,7 +62,6 @@ async function run () {
      // add a booking from the user interface
      app.post("/bookings", async(req,res) => {
         const booking = req.body;
-        console.log(booking);
         const query = {
             appointmentDate: booking.appointmentDate,
             treatmentName : booking.treatmentName,
@@ -77,6 +82,10 @@ async function run () {
 
      app.get("/bookings", verifyJWT, async(req,res) => {
         const email = req.query.email;
+        const decodedEmail = req.decoded.email ;
+        if(email !== decodedEmail) {
+            return res.status(403).send({message : "Forbidden Access"})
+        }
         const query = {email:email};
         const bookings = await bookingsCollection.find(query).toArray();
         res.send(bookings);
@@ -99,7 +108,42 @@ async function run () {
             return res.send({accessToken : token})
         }
         res.status(403).send({accessToken : "Forbidden Access"}); 
+     });
+
+     // AllUsers.js inside use
+     app.get("/users", async(req,res) => {
+        const query = {};
+        const users = await usersCollection.find(query).toArray();
+        res.send(users);
+     });
+
+     app.put('/users/admin/:id', verifyJWT, async(req,res) => {
+        const decodedEmail = req.decoded.email;
+        const query = {email:decodedEmail};
+        const user = await usersCollection.findOne(query);
+        if (user?.role !== "admin") {
+            return res.status(403).send({message : "Forbidden Access"})
+        }
+        const id = req.params.id;
+        const filter = {_id : new ObjectId(id) };
+        const options = { upsert: true };
+        const updatedDoc = {
+            $set : {
+                role : "admin"
+            }
+        }
+        const result = await usersCollection.updateOne(filter,updatedDoc,options);
+        res.send(result);
+
+     });
+
+     app.get("/users/admin/:email", async(req,res) => {
+        const email = req.params.email;
+        const query = {email : email};
+        const user = await usersCollection.findOne(query);
+        res.send({isAdmin : user?.role === "admin"})
      })
+
 
 
    } finally {
