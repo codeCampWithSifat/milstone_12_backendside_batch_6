@@ -40,6 +40,7 @@ async function run () {
      const appointmentOptionCollection = client.db("milestone_12_doctor_portal_batch_6").collection("appointmentOptions");
      const bookingsCollection =  client.db("milestone_12_doctor_portal_batch_6").collection("bookings");
      const usersCollection =  client.db("milestone_12_doctor_portal_batch_6").collection("users");
+     const doctorsCollection =  client.db("milestone_12_doctor_portal_batch_6").collection("doctors");
      
      // get all the data from the database
      // use aggregate to query multiple collection and then merge data;
@@ -142,7 +143,30 @@ async function run () {
         const query = {email : email};
         const user = await usersCollection.findOne(query);
         res.send({isAdmin : user?.role === "admin"})
+     });
+
+     // get  doctor specialty trematment api
+     app.get('/appointmentSpecialty', async(req,res) => {
+        const query = {};
+        const result = await appointmentOptionCollection.find(query).project({name : 1}).toArray();
+        res.send(result);
+     });
+
+     
+     app.post('/doctors', async(req,res) => {
+        const doctor = req.body;
+        const result = await doctorsCollection.insertOne(doctor);
+        res.send(result);
+     });
+
+     // get all the doctor 
+     app.get('/doctors',async(req,res) => {
+        const query = {};
+        const result = await doctorsCollection.find(query).toArray();
+        res.send(result);
      })
+
+
 
 
 
