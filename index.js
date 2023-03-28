@@ -41,6 +41,18 @@ async function run () {
      const bookingsCollection =  client.db("milestone_12_doctor_portal_batch_6").collection("bookings");
      const usersCollection =  client.db("milestone_12_doctor_portal_batch_6").collection("users");
      const doctorsCollection =  client.db("milestone_12_doctor_portal_batch_6").collection("doctors");
+
+     // make sure you use verifyAdmin after verifyJWT
+     const verifyAdmin = async (req, res, next) => {
+        console.log("inside verifyAdmin", req.decoded.email)
+        const decodedEmail = req.decoded.email;
+        const query = {email:decodedEmail};
+        const user = await usersCollection.findOne(query);
+        if (user?.role !== "admin") {
+            return res.status(403).send({message : "Forbidden Access"})
+        }
+        next()
+     }
      
      // get all the data from the database
      // use aggregate to query multiple collection and then merge data;
@@ -153,16 +165,25 @@ async function run () {
      });
 
      
-     app.post('/doctors', async(req,res) => {
+     app.post('/doctors', verifyJWT,verifyAdmin, async(req,res) => { 
         const doctor = req.body;
         const result = await doctorsCollection.insertOne(doctor);
         res.send(result);
      });
 
      // get all the doctor 
-     app.get('/doctors',async(req,res) => {
+     app.get('/doctors', verifyJWT, verifyAdmin,async(req,res) => {
         const query = {};
         const result = await doctorsCollection.find(query).toArray();
+        res.send(result);
+     })
+
+
+     // delete a doctor
+     app.delete("/doctors/:id", verifyJWT,verifyAdmin,  async(req,res) => {
+        const id = req.params.id;
+        const filter = {_id : new ObjectId(id)};
+        const result = await doctorsCollection.deleteOne(filter);
         res.send(result);
      })
 
