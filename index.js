@@ -150,6 +150,19 @@ async function run () {
 
      });
 
+     // temporary to update price field on appointment options
+    //  app.get("/addPrice", async(req,res) => {
+    //     const filter = {};
+    //     const options = {upsert : true};
+    //     const updatedDoc= {
+    //         $set : {
+    //             price : 99
+    //         }
+    //     }
+    //     const result = await appointmentOptionCollection.updateMany(filter, updatedDoc, options);
+    //     res.send(result);
+    //  })
+
      app.get("/users/admin/:email", async(req,res) => {
         const email = req.params.email;
         const query = {email : email};
@@ -185,8 +198,22 @@ async function run () {
         const filter = {_id : new ObjectId(id)};
         const result = await doctorsCollection.deleteOne(filter);
         res.send(result);
-     })
+     });
 
+
+
+     // Payment.js api working
+     app.get("/bookings/:id", async(req,res) => {
+        const id = req.params.id;
+        const query = {_id : new ObjectId(id)};
+        const result = await bookingsCollection.findOne(query);
+        res.send(result);
+     });
+
+
+     // stripe related api is here
+
+     
 
 
 
