@@ -5,6 +5,9 @@ const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.STRIPE_KEY);
+
+
 
 // use all the middleware
 app.use(express.json());
@@ -41,6 +44,7 @@ async function run () {
      const bookingsCollection =  client.db("milestone_12_doctor_portal_batch_6").collection("bookings");
      const usersCollection =  client.db("milestone_12_doctor_portal_batch_6").collection("users");
      const doctorsCollection =  client.db("milestone_12_doctor_portal_batch_6").collection("doctors");
+     const paymentsCollection =  client.db("milestone_12_doctor_portal_batch_6").collection("payments");
 
      // make sure you use verifyAdmin after verifyJWT
      const verifyAdmin = async (req, res, next) => {
@@ -212,8 +216,42 @@ async function run () {
 
 
      // stripe related api is here
+     app.post("/create-payment-intent", async(req, res) => {
+        const booking = req.body;
+        const price = booking.price ;
+        const amount = price*100;
 
-     
+        const paymentIntent = await stripe.paymentIntents.create({
+            currency : "usd",
+            amount : amount,
+            "payment_method_types": [
+                "card"
+              ],
+        });
+        res.send({
+            clientSecret: paymentIntent.client_secret,
+          });
+
+     });
+
+
+     // payment collection api
+     app.post("/payments", async(req,res) => {
+        const payment = req.body;
+        const result = await paymentsCollection.insertOne(payment);
+        const id = payment.bookingId ;
+        const filter = {_id : new ObjectId(id)};
+        const updatedDoc = {
+            $set : {
+                paid : true,
+                transactionId : payment.transactionId
+            }
+        }
+        const updatedResult = await bookingsCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+     })
+
+
 
 
 
